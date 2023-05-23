@@ -1,6 +1,7 @@
 'use strict'
 
-require('./server');
+require('dotenv').config();
+require('./startup/server');
 require('./startup/db')();
 
 
