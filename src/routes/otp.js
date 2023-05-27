@@ -1,5 +1,5 @@
 'use strict'
-const { RequestOtp, validateOtpRequest, validateOtpVerificationRequest } = require('../models/requestOtpModel');
+const { RequestOtp, validateOtpRequest, validateOtpVerificationRequest } = require('../models/otp');
 const { User } = require('../models/user');
 const bcrypt = require('bcrypt');
 const _ = require('lodash');
@@ -37,6 +37,7 @@ const routes = [
             }
 
             return { statusCode: 200, message: 'OTP sent successfully', otp: randomNumber };
+
         }
     },
 
@@ -63,25 +64,43 @@ const routes = [
 
             requestOtp.isOtpRequested = false;
 
-            // OTP Expired
-            if (currentTime > otpExpiryTime) {
-                await requestOtp.save();
-                return { statusCode: 200, message: 'OTP Expired..' };
-            } else {
-                if (requestOtp.otp == request.payload.otp) {
+            try {
+                // OTP Expired
+                if (currentTime > otpExpiryTime) {
                     await requestOtp.save();
-
-                    let user = new User(_.pick(request.payload, ['mobile_number']));
-                    const salt = await bcrypt.genSalt(10);
-                    const token = user.generateAuthToken(salt)
-                    user.saltKey = salt;
-                    await user.save();
-
-                    return { statusCode: 200, message: 'OTP verified successfully.', token: token };
+                    return { statusCode: 200, message: 'OTP Expired..' };
                 } else {
-                    return { statusCode: 200, message: 'InValid OTP.' };
+                    if (requestOtp.otp == request.payload.otp) {
+                        await requestOtp.save();
+
+                        let user = await User.findOne({ mobile_number: request.payload.mobile_number });
+                        const salt = await bcrypt.genSalt(10);
+
+                        let token = "";
+
+                        if (user) {
+                            token = user.generateAuthToken(salt);
+                            user.saltKey = salt;
+                            await user.save();
+                        } else {
+                            let newUser = new User(_.pick(request.payload, ['mobile_number']));
+                            newUser.email = null;
+                            token = newUser.generateAuthToken(salt);
+                            newUser.saltKey = salt;
+                            await newUser.save();
+                        }
+
+                        return { statusCode: 200, message: 'OTP verified successfully.', token: token };
+                    } else {
+                        return { statusCode: 200, message: 'InValid OTP.' };
+                    }
                 }
+            } catch (e) {
+                console.log(e);
+                return { statusCode: 200, message: 'Something went wrong!!' };
             }
+
+
         }
     }
 ]

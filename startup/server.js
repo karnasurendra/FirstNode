@@ -1,9 +1,9 @@
 'use strict'
 
 const Hapi = require('hapi');
-const authRoutes = require('../src/routes/requestOtp');
+const otpRoutes = require('../src/routes/otp');
 const signUp = require('../src/routes/signup');
-const { logger, errorHandlerMiddleware } = require('./logger');
+const logger = require('./logging');
 
 const server = Hapi.server({
     port: 5000,
@@ -19,12 +19,12 @@ const server = Hapi.server({
 module.exports = server;
 
 // Register the error handling middleware
-server.ext('onPreResponse', errorHandlerMiddleware);
+// server.ext('onPreResponse', logger);
 
 async function startServer() {
     try {
 
-        server.route(authRoutes);
+        server.route(otpRoutes);
         server.route(signUp);
 
         await server.start()

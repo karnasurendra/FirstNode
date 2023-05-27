@@ -1,12 +1,11 @@
 const jwt = require('jsonwebtoken');
-const saltKey = 'saltValue'
-const idKey = 'id'
-const User = require('../models/user')
+const saltValue = 'saltValue'
+const idValue = '_id'
+const { User } = require('../models/user')
 
 
 module.exports = async (request, h) => {
 
-    console.log('checking in authentication');
     const { headers } = request;
 
     if (!headers.hasOwnProperty('authorization')) {
@@ -22,22 +21,21 @@ module.exports = async (request, h) => {
         const decodedToken = await jwt.verify(token, process.env.JWT_PRIVATE_KEY);
 
         if (!decodedToken) {
-            console.log('Failure decoded token');
-            return h.response('InValid Token').code(401).takeover();
+            return h.response('InValid Token 1').code(401).takeover();
         }
 
+        const saltKey = decodedToken[saltValue];
+        const idKey = decodedToken[idValue];
         // Need to check is that latest token or not. There is a case where user did double signup
-        if (saltKey in decodedToken && idKey in decodedToken) {
-            const saltKey = decodedToken[saltKey];
-            const idKey = decodedToken[idKey];
+        if (saltKey && idKey) {
 
             const user = await User.findOne({ '_id': idKey });
 
             if (user) {
                 if (user.saltKey == saltKey) {
-                    // Attach the decoded token to the request object for further use
-                    request.auth.token = decodedToken;
-                    h.continue;
+                    // Using user object inside follow on request example in SignUp
+                    request.app.loginUser = user;
+                    return h.continue;
                 } else {
                     return h.response('InValid Token').code(401).takeover();
                 }
@@ -49,7 +47,6 @@ module.exports = async (request, h) => {
             return h.response('InValid Token').code(401).takeover();
         }
     } catch (e) {
-        console.log('Catch Block');
         return h.response('InValid Token').code(401).takeover();
     }
 
